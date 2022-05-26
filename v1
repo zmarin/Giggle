@@ -18,8 +18,12 @@ partnerLeadId = ifnull(leadInfo.get("PartnerLeadID"),"");
 uniqueid = leadInfo.get("UniqueID");
 Approved_Amount = ifnull(leadInfo.get("Approved_Amount"),"");
 emailSearch = zoho.crm.searchRecords("Contacts","Email:equals:" + email);
+dealCount = 0;
+If(emailSearch.size()>0){
 contactId = emailSearch.get(0).get("id");
+createMap.put("Contact_Name",{"id":contactId.toLong()});
 dealCount = zoho.crm.searchRecords("Deals","Contact_Name:equals:" + contactId);
+}
 if(dealCount.size() == 0)
 {
 createMap.put("Type","New Business");
@@ -96,7 +100,6 @@ else if(connectedDeal.size() == 0)
 dealName = gigID + " " + ifnull(leadInfo.get("First_Name"),"") + " " + leadInfo.get("Last_Name");
 createMap.put("Deal_Name",dealName);
 createMap.put("Connected_Lead",{"id":leadID});
-createMap.put("Contact_Name",{"id":contactId.toLong()});
 info createMap;
 if(leadInfo.get("Underwriting") == "Approved" && leadInfo.get("SignedContract") == false && leadInfo.get("Funded") == false && leadInfo.get("Decline_Reason") == null)
 {
@@ -108,7 +111,6 @@ createMap.put("UniqueID",uniqueid);
 createMap.put("PartnerLeadID",partnerLeadId);
 createMap.put("Connected_Lead",leadID);
 createMap.put("Lead_Source",leadSource);
-createMap.put("Contact_Name",{"id":contactId});
 updateDeal.put("Approved_Amount",Approved_Amount);
 createMap.put("Stage","Underwriting");
 updateDeal.put("CVA_Score","CVA " + CVA_Score);
