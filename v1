@@ -1,0 +1,131 @@
+createMap = Map();
+updateDeal = Map();
+leadInfo = zoho.crm.getRecordById("Leads",leadID);
+//info leadInfo;
+partneraccountget = leadInfo.get("Partner_Account");
+if(!partneraccountget.isnull())
+{
+partneraccount = leadInfo.get("Partner_Account").get("id");
+createMap.put("Partner_Account",{"id":partneraccount.toLong()});
+}
+email = leadInfo.get("Email");
+gigID = leadInfo.get("GiggleID");
+Lead_Provider = leadInfo.get("Lead_Provider");
+leadSource = leadInfo.get("Lead_Source");
+CVA_Score = leadInfo.get("CVA_Score");
+CCR_Score = leadInfo.get("CCR_Score");
+partnerLeadId = ifnull(leadInfo.get("PartnerLeadID"),"");
+uniqueid = leadInfo.get("UniqueID");
+Approved_Amount = ifnull(leadInfo.get("Approved_Amount"),"");
+emailSearch = zoho.crm.searchRecords("Contacts","Email:equals:" + email);
+contactId = emailSearch.get(0).get("id");
+dealCount = zoho.crm.searchRecords("Deals","Contact_Name:equals:" + contactId);
+if(dealCount.size() == 0)
+{
+createMap.put("Type","New Business");
+}
+else
+{
+createMap.put("Type","Existing Business");
+}
+connectedDeal = zoho.crm.getRelatedRecords("Deal_Related","Leads",leadID,1,1);
+info connectedDeal;
+if(connectedDeal.size() > 0)
+{
+// IF DEAL EXISTS
+dealConnectedID = connectedDeal.get(0).get("id");
+/////////// GET ID OF RELATED CONTACT //////////
+if(leadInfo.get("Underwriting") == "Approved" && leadInfo.get("SignedContract") == true && leadInfo.get("Funded") == false && leadInfo.get("Decline_Reason") == null)
+{
+// change stage of the deal
+contractsignedtime = ifnull(leadInfo.get("Contract_Time"),"");
+if(contractsignedtime != "")
+{
+timeadjust = contractsignedtime.getprefix(".");
+datetime = timeadjust.toTime("yyyy-MM-dd'T'HH:mm:ss").subHour(5).toString("yyyy-MM-dd'T'HH:mm:ss");
+updateDeal.put("Contract_Time",datetime);
+}
+updateDeal.put("Closing_Date",zoho.currentdate);
+updateDeal.put("Approved_Amount",Approved_Amount);
+updateDeal.put("Stage","SignedContract");
+updateDeal.put("CVA_Score","CVA " + CVA_Score);
+updateDeal.put("CCR_Score","CCR " + CCR_Score);
+updateDeal.put("Lead_Provider",Lead_Provider);
+updaDeal = zoho.crm.updateRecord("Deals",dealConnectedID.tolong(),updateDeal);
+info "executed 2";
+}
+else if(leadInfo.get("Underwriting") == "Approved" && leadInfo.get("SignedContract") == true && leadInfo.get("Funded") == true && leadInfo.get("Decline_Reason") == null)
+{
+Contract_Signed_Date = ifnull(leadInfo.get("Contract_Signed_Date"),"");
+Discount_Date = ifnull(leadInfo.get("Discount_Date"),"");
+Funded_Amount = ifnull(leadInfo.get("Funded_Amount"),"");
+Payment_Amount = ifnull(leadInfo.get("Payment_Amount"),"");
+Funded_Date = ifnull(leadInfo.get("Funded_Date"),"");
+Repay_Amount = ifnull(leadInfo.get("Repay_Amount"),"");
+Discount_Amount = ifnull(leadInfo.get("Discount_Amount"),"");
+Number_of_Payments = ifnull(leadInfo.get("Number_of_Payments"),"");
+updateDeal.put("Contract_Signed_Date",Contract_Signed_Date);
+updateDeal.put("Discount_Date",Discount_Date);
+updateDeal.put("Funded_Amount",Funded_Amount);
+updateDeal.put("Approved_Amount",Approved_Amount);
+updateDeal.put("Payment_Amount",Payment_Amount);
+updateDeal.put("Funded_Date",Funded_Date);
+updateDeal.put("Stage","Funded");
+updateDeal.put("Amount",Funded_Amount);
+updateDeal.put("Repay_Amount",Repay_Amount);
+updateDeal.put("Discount_Amount",Discount_Amount);
+updateDeal.put("Number_of_Payments",Number_of_Payments);
+updateDeal.put("CVA_Score","CVA " + CVA_Score);
+updateDeal.put("CCR_Score","CCR " + CCR_Score);
+updateDeal.put("Lead_Provider",Lead_Provider);
+updaDeal = zoho.crm.updateRecord("Deals",dealConnectedID.tolong(),updateDeal);
+info "executed 3";
+}
+else if(leadInfo.get("Decline_Reason") != null)
+{
+updateDeal.put("Stage","Closed Lost");
+updaDeal = zoho.crm.updateRecord("Deals",dealConnectedID.tolong(),updateDeal);
+info "executed 4";
+}
+}
+else if(connectedDeal.size() == 0)
+{
+// IF does not exists
+///////// COUNT NUMBER OF DEALS ////////////////
+////////////////////////////////////////////////
+dealName = gigID + " " + ifnull(leadInfo.get("First_Name"),"") + " " + leadInfo.get("Last_Name");
+createMap.put("Deal_Name",dealName);
+createMap.put("Connected_Lead",{"id":leadID});
+createMap.put("Contact_Name",{"id":contactId.toLong()});
+info createMap;
+if(leadInfo.get("Underwriting") == "Approved" && leadInfo.get("SignedContract") == false && leadInfo.get("Funded") == false && leadInfo.get("Decline_Reason") == null)
+{
+// created Deal. all other fields empty
+createTime = leadInfo.get("Created_Time");
+createMap.put("Lead_Created_Time",createTime);
+createMap.put("Closing_Date",zoho.currentdate.addDay(1));
+createMap.put("UniqueID",uniqueid);
+createMap.put("PartnerLeadID",partnerLeadId);
+createMap.put("Connected_Lead",leadID);
+createMap.put("Lead_Source",leadSource);
+createMap.put("Contact_Name",{"id":contactId});
+updateDeal.put("Approved_Amount",Approved_Amount);
+createMap.put("Stage","Underwriting");
+updateDeal.put("CVA_Score","CVA " + CVA_Score);
+updateDeal.put("CCR_Score","CCR " + CCR_Score);
+updateDeal.put("Lead_Provider",Lead_Provider);
+createDeal = zoho.crm.createRecord("Deals",createMap);
+info "executed 5";
+}
+}
+else
+{
+sendmail
+[
+from :zoho.adminuserid
+to :"zmarin@cor.com,jared@gigglefinance.com"
+subject :"Deal not Created please Check Lead"
+message :"Lead ID: " + leadID
+]
+info "executed 6";
+}
